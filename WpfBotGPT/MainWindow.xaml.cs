@@ -77,7 +77,7 @@ namespace WpfBotGPT
 
 
             //запуск таимера на посторный запуск
-            timer = new Timer(async _ => await SendPeriodicMessageAsync(login, password), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+            timer = new Timer(async _ => await SendPeriodicMessageAsync(login, password), null, TimeSpan.Zero, TimeSpan.FromMinutes(4));
 
 
 
