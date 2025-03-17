@@ -1,0 +1,140 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using Telegram.Bot;
+using Telegram.Bot.Types.Enums;
+
+namespace WpfBotGPT
+{
+    public partial class MainWindow : Window
+    {
+				private TelegramBotClient botClient;							
+        public MainWindow()
+        {
+            InitializeComponent();
+        }
+
+        private async void OnStartButtonClick(object sender, RoutedEventArgs e)
+        {
+            string botToken = BotTokenTextBox.Text;
+            string login = LoginTextBox.Text;
+            string password = PasswordBox.Password;
+
+            if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
+            {
+                StatusTextBlock.Text = "Пожалуйста, заполните все поля.";
+                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+                return;
+            }
+
+            botClient = new TelegramBotClient(botToken);
+
+            // Получение chatId
+            long chatId = await GetChatIdAsync();
+            if (chatId == 0)
+            {
+                StatusTextBlock.Text = "Не удалось получить chatId. Убедитесь, что бот получил сообщение.";
+                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+                return;
+            }
+
+            string extractedText = await ExtractTextFromWebsiteAsync(login, password);
+            if (!string.IsNullOrEmpty(extractedText))
+            {  await SendMessageToTelegramAsync(chatId, extractedText);
+            }
+        }
+
+        private async Task<long> GetChatIdAsync()
+        {
+            try
+            {
+                var updates = await botClient.GetUpdatesAsync();
+                var lastUpdate = updates.LastOrDefault();
+
+                if (lastUpdate != null && lastUpdate.Message != null && lastUpdate.Message.Chat != null)
+                {
+                    return lastUpdate.Message.Chat.Id;
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusTextBlock.Text = $"Ошибка получения chatId: {ex.Message}";
+                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            }
+        }
+
+        private async Task<string> ExtractTextFromWebsiteAsync(string login, string password)
+        {
+            string extractedText = string.Empty;
+
+            // Настройка Selenium WebDriver
+            var options = new ChromeOptions();
+            options.AddArgument("--headless"); // Запуск в фоновом режиме
+            using (var driver = new ChromeDriver("D:\\Users\\jon\\Desktop\\java\\chromedriver134.exe"))
+                               
+                {
+                try
+                {
+                    driver.Navigate().GoToUrl("https://otrs.efsol.ru/otrs/index.pl?Action=AgentDashboard"); // Замените на URL сайта
+
+                    //окно разворачивается на полный экран
+                    driver.Manage().Window.Maximize();
+                    await Task.Delay(2000);
+
+
+
+
+
+                    // Ввод логина и пароля
+                    driver.FindElement(By.XPath("//*[@id=\"User\"]")).SendKeys(login);
+
+                    //driver.FindElement(By.Name("username")).SendKeys(login);
+
+                    driver.FindElement(By.XPath("//*[@id=\"Password\"]")).SendKeys(password);
+                    // driver.FindElement(By.Name("password")).SendKeys(password);
+                    driver.FindElement(By.XPath("//*[@id=\"LoginButton\"]")).Click();
+                   // driver.FindElement(By.Name("submit")).Click();
+
+                    // Ожидание загрузки страницы
+                    await Task.Delay(2000);
+
+
+                    // Извлечение текста с помощью XPath
+                    var element = driver.FindElement(By.XPath("//xpath/to/element")); // Замените на ваш XPath
+
+
+
+
+
+
+
+                    extractedText = element.Text;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка: {ex.Message}");
+                }
+            }
+
+            return extractedText;
+        }
+
+        private async Task SendMessageToTelegramAsync(string botToken, string message)
+        {
+            try
+            {
+                var botClient = new TelegramBotClient(botToken);
+                long chatId =5465465;
+                await botClient.SendTextMessageAsync(chatId, message);
+                MessageBox.Show("Сообщение отправлено в Telegram.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка отправки сообщения: {ex.Message}");
+            }
+        }
+    }
+}

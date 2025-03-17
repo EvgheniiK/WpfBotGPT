@@ -1,0 +1,141 @@
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using Telegram.Bot;
+using Telegram.Bot.Types.Enums;
+
+namespace TelegramBotApp
+{
+    public partial class MainWindow : Window
+    {
+        private TelegramBotClient botClient;
+        private Timer timer;
+        private long chatId;
+        private IWebDriver driver;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+        }
+
+        private async void OnStartButtonClick(object sender, RoutedEventArgs e)
+        {
+            string botToken = BotTokenTextBox.Text;
+            string login = LoginTextBox.Text;
+            string password = PasswordBox.Password;
+
+            if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
+            {
+                UpdateStatus("Пожалуйста, заполните все поля.", System.Windows.Media.Brushes.Red);
+                return;
+            }
+
+            botClient = new TelegramBotClient(botToken);
+
+            // Получение chatId
+            chatId = await GetChatIdAsync();
+            if (chatId == 0)
+            {
+                UpdateStatus("Не удалось получить chatId. Убедитесь, что бот получил сообщение.", System.Windows.Media.Brushes.Red);
+                return;
+            }
+
+            // Инициализация Selenium WebDriver
+            var options = new ChromeOptions();
+            options.AddArgument("--headless");
+            driver = new ChromeDriver(@"C:\path\to\chromedriver", options);
+
+            // Запуск таймера для периодической отправки сообщений
+            timer = new Timer(async _ => await SendPeriodicMessageAsync(login, password), null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
+        }
+
+        private async Task<long> GetChatIdAsync()
+        {
+            try
+            {
+                var updates = await botClient.GetUpdatesAsync();
+                var lastUpdate = updates.LastOrDefault();
+
+                if (lastUpdate != null && lastUpdate.Message != null && lastUpdate.Message.Chat != null)
+                {
+                    return lastUpdate.Message.Chat.Id;
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Ошибка получения chatId: {ex.Message}", System.Windows.Media.Brushes.Red);
+            }
+
+            return 0;
+        }
+
+        private async Task SendPeriodicMessageAsync(string login, string password)
+        {
+            string extractedText = await ExtractTextFromWebsiteAsync(login, password);
+            if (!string.IsNullOrEmpty(extractedText))
+            {
+                await SendMessageToTelegramAsync(chatId, extractedText);
+            }
+        }
+
+        private async Task<string> ExtractTextFromWebsiteAsync(string login, string password)
+        {
+            string extractedText = string.Empty;
+
+            try
+            {
+                driver.Navigate().GoToUrl("https://example.com/login");
+
+                driver.FindElement(By.Name("username")).SendKeys(login);
+                driver.FindElement(By.Name("password")).SendKeys(password);
+                driver.FindElement(By.Name("submit")).Click();
+
+                await Task.Delay(2000);
+
+                // Обновление страницы
+                driver.Navigate().Refresh();
+
+                // Извлечение текста с помощью XPath
+                var element = driver.FindElement(By.XPath("//xpath/to/element"));
+                extractedText = element.Text;
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Ошибка: {ex.Message}", System.Windows.Media.Brushes.Red);
+            }
+
+            return extractedText;
+        }
+
+        private async Task SendMessageToTelegramAsync(long chatId, string message)
+        {
+            try
+            {
+                await botClient.SendTextMessageAsync(chatId, message);
+                UpdateStatus("Сообщение отправлено в Telegram.", System.Windows.Media.Brushes.Green);
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Ошибка отправки сообщения: {ex.Message}", System.Windows.Media.Brushes.Red);
+            }
+        }
+
+        private void UpdateStatus(string message, System.Windows.Media.Brush color)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                StatusTextBlock.Text = message;
+                StatusTextBlock.Foreground = color;
+            });
+        }
+
+        private void OnWindowClosed(object sender, EventArgs e)
+        {
+            driver?.Quit();
+        }
+    }
+}

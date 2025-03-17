@@ -1,0 +1,119 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using Telegram.Bot;
+using Telegram.Bot.Types.Enums;
+
+namespace TelegramBotApp
+{
+    public partial class MainWindow : Window
+    {
+        private TelegramBotClient botClient;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+        }
+
+        private async void OnStartButtonClick(object sender, RoutedEventArgs e)
+        {
+            string botToken = BotTokenTextBox.Text;
+            string login = LoginTextBox.Text;
+            string password = PasswordBox.Password;
+
+            if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
+            {
+                StatusTextBlock.Text = "Пожалуйста, заполните все поля.";
+                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+                return;
+            }
+
+            botClient = new TelegramBotClient(botToken);
+
+            // Получение chatId
+            long chatId = await GetChatIdAsync();
+            if (chatId == 0)
+            {
+                StatusTextBlock.Text = "Не удалось получить chatId. Убедитесь, что бот получил сообщение.";
+                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+                return;
+            }
+
+            string extractedText = await ExtractTextFromWebsiteAsync(login, password);
+            if (!string.IsNullOrEmpty(extractedText))
+            {
+                await SendMessageToTelegramAsync(chatId, extractedText);
+            }
+        }
+
+        private async Task<long> GetChatIdAsync()
+        {
+            try
+            {
+                var updates = await botClient.GetUpdatesAsync();
+                var lastUpdate = updates.LastOrDefault();
+
+                if (lastUpdate != null && lastUpdate.Message != null && lastUpdate.Message.Chat != null)
+                {
+                    return lastUpdate.Message.Chat.Id;
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusTextBlock.Text = $"Ошибка получения chatId: {ex.Message}";
+                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            }
+
+            return 0;
+        }
+
+        private async Task<string> ExtractTextFromWebsiteAsync(string login, string password)
+        {
+            string extractedText = string.Empty;
+
+            var options = new ChromeOptions();
+            options.AddArgument("--headless");
+            using (var driver = new ChromeDriver(@"C:\path\to\chromedriver", options))
+            {
+                try
+                {
+                    driver.Navigate().GoToUrl("https://example.com/login");
+
+                    driver.FindElement(By.Name("username")).SendKeys(login);
+                    driver.FindElement(By.Name("password")).SendKeys(password);
+                    driver.FindElement(By.Name("submit")).Click();
+
+                    await Task.Delay(2000);
+
+                    var element = driver.FindElement(By.XPath("//xpath/to/element"));
+                    extractedText = element.Text;
+                }
+                catch (Exception ex)
+                {
+                    StatusTextBlock.Text = $"Ошибка: {ex.Message}";
+                    StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+                }
+            }
+
+            return extractedText;
+        }
+
+        private async Task SendMessageToTelegramAsync(long chatId, string message)
+        {
+            try
+            {
+                await botClient.SendTextMessageAsync(chatId, message);
+                StatusTextBlock.Text = "Сообщение отправлено в Telegram.";
+                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Green;
+            }
+            catch (Exception ex)
+            {
+                StatusTextBlock.Text = $"Ошибка отправки сообщения: {ex.Message}";
+                StatusTextBlock.Foreground = System.Windows.Media.Brushes.Red;
+            }
+        }
+    }
+}
