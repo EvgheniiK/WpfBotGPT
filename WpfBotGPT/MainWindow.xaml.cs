@@ -12,7 +12,8 @@ using Telegram.Bot.Types.Enums;
 using System.Threading;
 using System.Threading;
 using OpenQA.Selenium.BiDi.Modules.Input;
-
+using Telegram.Bots.Types.Passport;
+using System.Net.Sockets;
 
 namespace WpfBotGPT
 {
@@ -76,7 +77,7 @@ namespace WpfBotGPT
 
 
             //запуск таимера на посторный запуск
-            timer = new Timer(async _ => await SendPeriodicMessageAsync(login, password), null, TimeSpan.Zero, TimeSpan.FromMinutes(4));
+            timer = new Timer(async _ => await SendPeriodicMessageAsync(login, password), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
 
 
 
@@ -115,7 +116,7 @@ namespace WpfBotGPT
             }
         }
 
-        // парсер
+            // парсер
         private async Task<string> ExtractTextFromWebsiteAsync(string login, string password)
         {
             string extractedText = string.Empty;
@@ -154,8 +155,15 @@ namespace WpfBotGPT
 
 
                     // Первый XPath  на заблокирование заявки
-                    string firstXPath = "//*[@id=\"ToolBar\"]/li[3]/a/span";
+                  //  string firstXPath = "//*[@id=\"ToolBar\"]/li[3]/a/span";
 
+                  //прооверка есть ли непрочитаные 
+                    string firstXPath = "//li[@class='Locked New']";
+                                       
+
+                   //li[@class='Locked']  --правильный 
+                   //li[@class='Locked New']  --правильный 
+                 
 
                     // Попытка найти элемент по первому XPath
                     if (IsElementPresent(driver, firstXPath))
@@ -163,7 +171,8 @@ namespace WpfBotGPT
 
 
                         // клик на заблокирование заявки
-                        driver.FindElement(By.XPath("//*[@id=\"ToolBar\"]/li[3]/a/span")).Click();
+                       // driver.FindElement(By.XPath("//*[@id=\"ToolBar\"]/li[3]/a/span")).Click();
+                        driver.FindElement(By.XPath("//li[@class='Locked']")).Click();
 
 
                         await Task.Delay(3000);
@@ -173,10 +182,11 @@ namespace WpfBotGPT
 
                         //номер и тема заявки
                         string secondXPath = "//table[@class='TableSmall NoCellspacing']/tbody/tr //td[@class='UnreadArticles']/following-sibling::td[1]";
+                        
 
                         //это обработака нужна если есть зачвки по времени но без коментариев
-                        if (IsElementPresent(driver, secondXPath))
-                        {
+                      /*  if (IsElementPresent(driver, secondXPath))
+                        {*/
                             //номер и тема заявки
                             IWebElement table1 = driver.FindElement(By.XPath(secondXPath));
 
@@ -196,14 +206,14 @@ namespace WpfBotGPT
                             // клик на выход
                             driver.FindElement(By.XPath("//*[@id=\"LogoutButton\"]")).Click();
 
-                            await Task.Delay(4000);
+                            await Task.Delay(3000);
 
                             String element = " Не прочитаных: " + elementListsImg.Count.ToString() + "\n #️⃣ " + numberTiket + "\n Тема: " + titleTiket;
 
 
 
                             extractedText = element;
-                        }
+                  /*      }
                         else
                         {
                             await Task.Delay(4000);
@@ -219,7 +229,7 @@ namespace WpfBotGPT
 
                             UpdateStatus("Не прочитанных заявок нет", System.Windows.Media.Brushes.Green);
 
-                        }
+                        }*/
                     }
                     else
                     {

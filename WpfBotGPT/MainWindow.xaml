@@ -5,13 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfBotGPT"
         mc:Ignorable="d"
-        Title="OTRS Telegramm bot v 0.1" Height="300" Width="500">
+        Title="OTRS Telegramm bot v 0.2" Height="300" Width="500">
     <Grid Height="180" VerticalAlignment="Top">
         <Menu Height="19" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="200,0,230,0">
 
             <MenuItem Header="Справка " Width="67" Click="MenuItem_Click">
                 <MenuItem Header="- Версия Chrome должна быть 134.0... &#13; - Программа парсит сайт OTRS каждые 5 минут &#13; - И посылает сообщение в телеграмм бот &#13; - Программа ориентируется на «звёздочки» в ОТРС &#13; - Если сообщений несколько то посылается только заголовок первого " ></MenuItem>
                           
+                
             </MenuItem>
 
         </Menu>
